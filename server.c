@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <ctype.h>
-#define PORT 12000
+
 int main(int argc, char const* argv[])
 {
 	int server_fd, new_socket, valread;
@@ -21,7 +21,6 @@ int main(int argc, char const* argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	// Forcefully attaching socket to the port 12000
 	if (setsockopt(server_fd, SOL_SOCKET,
 				SO_REUSEADDR, &opt,
 				sizeof(opt))) {
@@ -29,11 +28,9 @@ int main(int argc, char const* argv[])
 		exit(EXIT_FAILURE);
 	}
 	address.sin_family = AF_INET;
-//	address.sin_addr.s_addr = inet_addr("127.0.0.1"),
 	address.sin_addr.s_addr = inet_addr("127.0.0.1"),
 	address.sin_port = htons(atoi(argv[1]));
 
-	// Forcefully attaching socket to the port 12000
 	if (bind(server_fd, (struct sockaddr*)&address,
 			sizeof(address))
 		< 0) {
