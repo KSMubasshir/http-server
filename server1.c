@@ -1,7 +1,6 @@
 //
 // Created by ksmubasshir on 1/27/23.
 //
-
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,27 +9,58 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <sys/stat.h>
 
-void* client_handler(void* arg) {
-    int new_socket = *((int*)arg);
-    char sentence[1024] = { 0 };
-    int valread = read(new_socket, sentence, 1024);
-    printf("Recevied sentence:\n");
-    printf("%s\n", sentence);
-    char modifiedSentence[1024] = { 0 };
-    int j = 0;
-    char ch;
-    while (sentence[j]){
-        ch = sentence[j];
-        modifiedSentence[j] = toupper(ch);
-        j++;
+#define MAX_THREADS 10
+#define BUFFER_SIZE 1024
+
+int server_fd, new_socket;
+struct sockaddr_in address;
+pthread_t thread_pool[MAX_THREADS];
+int thread_count = 0;
+
+void *client_handler(void *socket_desc) {
+    char buffer[BUFFER_SIZE] = {0};
+    int valread = read(*(int *)socket_desc, buffer, BUFFER_SIZE);
+    if (valread < 0) {
+        perror("read failed");
+        return NULL;
     }
-    printf("Modified sentence:\n");
-    printf("%s\n", modifiedSentence);
-    send(new_socket, modifiedSentence, strlen(modifiedSentence), 0);
 
-    // closing the connected socket
-    close(new_socket);
+    char method[8], url[BUFFER_SIZE], http_version[16];
+    sscanf(buffer, "%s %s %s", method, url, http_version);
+
+    if (strcmp(method, "GET") != 0) {
+        send(*(int *)socket_desc, "400 Bad Request\n", 17, 0);
+        return NULL;
+    }
+
+    if (strcmp(http_version, "HTTP/1.1") != 0) {
+        send(*(int *)socket_desc, "505 HTTP Version Not Supported\n", 32, 0);
+        return NULL;
+    }
+
+    struct stat file_stat;
+    if (stat(url, &file_stat) < 0) {
+        send(*(int *)socket_desc, "404 Not Found\n", 14, 0);
+        return NULL;
+    }
+
+    if (!S_ISREG(file_stat.st_mode)) {
+        send(*(int *)socket_desc, "404 Not Found\n", 14, 0);
+        return NULL;
+    }
+
+    char *html_file = malloc(file_stat.st_size + 1);
+    FILE *file = fopen(url, "r");
+    fread(html_file, file_stat.st_size, 1, file);
+    fclose(file);
+
+    send(*(int *)socket_desc, "200 OK\n", 7, 0);
+    send(*(int *)socket_desc, html_file, file_stat.st_size, 0);
+
+    free(html_file);
+
     return NULL;
 }
 
