@@ -1,0 +1,10 @@
+# directory
+*.idea/
+
+# binary and executables
+*.o
+
+# video, image and html files
+*.html
+*.jpeg
+*.mp4
