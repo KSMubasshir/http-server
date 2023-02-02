@@ -17,9 +17,8 @@ void* client_handler(void* arg) {
     int new_socket = *((int*)arg);
     char sentence[1024] = { 0 };
     int valread = read(new_socket, sentence, 1024);
-    int j = 0;
-    char ch;
 
+    printf("%s\n", sentence);
     send(new_socket, sentence, strlen(sentence), 0);
 
     // closing the connected socket
