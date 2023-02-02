@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <pthread.h>
 #include <sys/stat.h>
+#include <arpa/inet.h>
 
 #define MAX_THREADS 10
 #define BUFFER_SIZE 1024
@@ -26,7 +27,7 @@ void *client_handler(void *socket_desc) {
         perror("read failed");
         return NULL;
     }
-
+    printf(buffer);
     char method[8], url[BUFFER_SIZE], http_version[16];
     sscanf(buffer, "%s %s %s", method, url, http_version);
 
@@ -105,6 +106,7 @@ int main(int argc, char const* argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
+        printf("message-from-client: %s, %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
         // Create a new thread for each client
         pthread_t client_thread;
         int* new_sock = malloc(sizeof(int));
