@@ -21,46 +21,46 @@ pthread_t thread_pool[MAX_THREADS];
 int thread_count = 0;
 
 void *client_handler(void *socket_desc) {
+    int hasFile = 0;
+    char response_header[1024];
     char buffer[BUFFER_SIZE] = {0};
+    struct stat file_stat;
+    char *html_file;
     int valread = read(*(int *)socket_desc, buffer, BUFFER_SIZE);
     if (valread < 0) {
         perror("read failed");
         return NULL;
     }
-    printf(buffer);
+    printf("%s\n", buffer);
     char method[8], url[BUFFER_SIZE], http_version[16];
     sscanf(buffer, "%s %s %s", method, url, http_version);
 
     if (strcmp(method, "GET") != 0) {
-        send(*(int *)socket_desc, "400 Bad Request\n", 17, 0);
-        return NULL;
+        sprintf(response_header, "HTTP/1.1 400 Bad Request\\r\\n\\r\\n");
+    }
+    else if (strcmp(http_version, "HTTP/1.1") != 0) {
+        sprintf(response_header, "HTTP/1.1 505 HTTP Version Not Supported\\r\\n\\r\\n");
+    }
+    else if (stat(url, &file_stat) < 0) {
+        sprintf(response_header, "HTTP/1.1 404 Not Found\\r\\n\\r\\n");
+    }
+    else if (!S_ISREG(file_stat.st_mode)) {
+        sprintf(response_header, "HTTP/1.1 404 Not Found\\r\\n\\r\\n");
+    }
+    else{
+        hasFile = 1;
+        html_file = malloc(file_stat.st_size + 1);
+        FILE *file = fopen(url, "r");
+        fread(html_file, file_stat.st_size, 1, file);
+        fclose(file);
+        sprintf(response_header, "HTTP/1.1 200 OK\\r\\n\\r\\n");
     }
 
-    if (strcmp(http_version, "HTTP/1.1") != 0) {
-        send(*(int *)socket_desc, "505 HTTP Version Not Supported\n", 32, 0);
-        return NULL;
+    send(*(int *)socket_desc, response_header, strlen(response_header), 0);
+    if(hasFile==1) {
+        send(*(int *) socket_desc, html_file, file_stat.st_size, 0);
+        free(html_file);
     }
-
-    struct stat file_stat;
-    if (stat(url, &file_stat) < 0) {
-        send(*(int *)socket_desc, "404 Not Found\n", 14, 0);
-        return NULL;
-    }
-
-    if (!S_ISREG(file_stat.st_mode)) {
-        send(*(int *)socket_desc, "404 Not Found\n", 14, 0);
-        return NULL;
-    }
-
-    char *html_file = malloc(file_stat.st_size + 1);
-    FILE *file = fopen(url, "r");
-    fread(html_file, file_stat.st_size, 1, file);
-    fclose(file);
-
-    send(*(int *)socket_desc, "200 OK\n", 7, 0);
-    send(*(int *)socket_desc, html_file, file_stat.st_size, 0);
-
-    free(html_file);
 
     return NULL;
 }
