@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <arpa/inet.h>
 
 int main(int argc, char const* argv[])
 {
@@ -51,19 +52,22 @@ int main(int argc, char const* argv[])
 		}
 		char sentence[1024] = { 0 };
 		valread = read(new_socket, sentence, 1024);
-		printf("Recevied sentence:\n");
+
+//        char *client_ip = inet_ntoa(address.sin_addr);
+//        int client_port = ntohs(address.sin_port);
+
+        char client_ip[16];
+        struct sockaddr_in client_address;
+        bzero(&client_address, sizeof(client_address));
+        socklen_t len = sizeof(client_address);
+        getsockname(server_fd, (struct sockaddr *) &client_address, &len);
+        inet_ntop(AF_INET, &address.sin_addr, client_ip, sizeof(client_ip));
+        int client_port = ntohs(client_address.sin_port);
+
+		printf("message-from-client: %s, %d\n", client_ip, client_port);
 		printf("%s\n", sentence);
-		char modifiedSentence[1024] = { 0 };
-		int j = 0;
-		char ch;
-		while (sentence[j]){
-			ch = sentence[j];
-			modifiedSentence[j] = toupper(ch);
-			j++;
-		}
-		printf("Modified sentence:\n");
-		printf("%s\n", modifiedSentence);
-		send(new_socket, modifiedSentence, strlen(modifiedSentence), 0);
+
+		send(new_socket, sentence, strlen(sentence), 0);
 
 		// closing the connected socket
 		close(new_socket);

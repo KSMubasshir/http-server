@@ -10,9 +10,8 @@ int main(int argc, char const* argv[])
 {
 	int sock = 0, valread, client_fd;
 	struct sockaddr_in serv_addr;
-	printf("Input lowercase sentence:\n");
 	char sentence[256];
-	fgets(sentence, sizeof(sentence), stdin);
+    strcpy(sentence, argv[3]);
 	char modifiedSentence[1024] = { 0 };
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		printf("\n Socket creation error \n");
@@ -39,7 +38,7 @@ int main(int argc, char const* argv[])
 		return -1;
 	}
 	send(sock, sentence, strlen(sentence), 0);
-	printf("Modified sentence received from server:\n");
+//	printf("Response from server: ");
 	valread = read(sock, modifiedSentence, 1024);
 	printf("%s\n", modifiedSentence);
 
