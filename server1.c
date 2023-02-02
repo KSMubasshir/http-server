@@ -11,6 +11,8 @@
 #include <pthread.h>
 #include <sys/stat.h>
 #include <arpa/inet.h>
+#include <dirent.h>
+
 
 #define MAX_THREADS 10
 #define BUFFER_SIZE 1024
@@ -19,6 +21,33 @@ int server_fd, new_socket;
 struct sockaddr_in address;
 pthread_t thread_pool[MAX_THREADS];
 int thread_count = 0;
+
+void printdir(char *dir, int depth)
+{
+    DIR *dp;
+    struct dirent *entry;
+    struct stat statbuf;
+    if((dp = opendir(dir)) == NULL) {
+        fprintf(stderr,"cannot open directory: %s\n", dir);
+        return;
+    }
+    chdir(dir);
+    while((entry = readdir(dp)) != NULL) {
+        lstat(entry->d_name,&statbuf);
+        if(S_ISDIR(statbuf.st_mode)) {
+            /* Found a directory, but ignore . and .. */
+            if(strcmp(".",entry->d_name) == 0 ||
+               strcmp("..",entry->d_name) == 0)
+                continue;
+            printf("%*s%s/\n",depth,"",entry->d_name);
+            /* Recurse at a new indent level */
+            printdir(entry->d_name,depth+4);
+        }
+        else printf("%*s%s\n",depth,"",entry->d_name);
+    }
+    chdir("..");
+    closedir(dp);
+}
 
 void *client_handler(void *socket_desc) {
     int hasFile = 0;
@@ -35,36 +64,47 @@ void *client_handler(void *socket_desc) {
     char method[8], url[BUFFER_SIZE], http_version[16];
     sscanf(buffer, "%s %s %s", method, url, http_version);
 
-    char *token;
-    /* get the first token */
-    token = strtok(url, "/");
-    /* walk through other tokens */
-    while( token != NULL ) {
-        printf( "filename: %s\n", token );
-        token = strtok(NULL, "/");
-    }
 
-//    printf("%s\n", url);
+    char *requested_file_name = strtok(url, "/");
+//    printdir("www", 0);
+    char path[50];
+    strcpy(path, "www");
+    strcat(path, url);
+    printf("%s\n", path);
+
 
     if (strcmp(method, "GET") != 0) {
-        sprintf(response_header, "HTTP/1.1 400 Bad Request\\r\\n\\r\\n");
+        sprintf(response_header, "HTTP/1.1 400 Bad Request\r\n\r\n");
     }
     else if (strcmp(http_version, "HTTP/1.1") != 0) {
-        sprintf(response_header, "HTTP/1.1 505 HTTP Version Not Supported\\r\\n\\r\\n");
+        sprintf(response_header, "HTTP/1.1 505 HTTP Version Not Supported\r\n\r\n");
     }
-    else if (stat(url, &file_stat) < 0) {
-        sprintf(response_header, "HTTP/1.1 404 Not Found\\r\\n\\r\\n");
+    else if (stat(path, &file_stat) < 0) {
+        sprintf(response_header, "HTTP/1.1 404 Not Found\r\n\r\n");
     }
     else if (!S_ISREG(file_stat.st_mode)) {
-        sprintf(response_header, "HTTP/1.1 404 Not Found\\r\\n\\r\\n");
+        sprintf(response_header, "HTTP/1.1 404 Not Found\r\n\r\n");
     }
     else{
         hasFile = 1;
         html_file = malloc(file_stat.st_size + 1);
-        FILE *file = fopen(url, "r");
+        FILE *file = fopen(path, "r");
         fread(html_file, file_stat.st_size, 1, file);
         fclose(file);
-        sprintf(response_header, "HTTP/1.1 200 OK\\r\\n\\r\\n");
+
+        char *extension = strrchr(requested_file_name, '.');
+        if (extension == NULL) {
+            printf("Invalid file type\n");
+        }
+        if (strcmp(extension, ".html") == 0) {
+            sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
+        } else if (strcmp(extension, ".jpeg") == 0) {
+            sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: image/jpeg\r\n\r\n");
+        } else if (strcmp(extension, ".mp4") == 0) {
+            sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\n\r\n");
+        } else {
+            printf("Invalid file type\n");
+        }
     }
 
     send(*(int *)socket_desc, response_header, strlen(response_header), 0);
