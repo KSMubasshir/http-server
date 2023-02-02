@@ -35,6 +35,17 @@ void *client_handler(void *socket_desc) {
     char method[8], url[BUFFER_SIZE], http_version[16];
     sscanf(buffer, "%s %s %s", method, url, http_version);
 
+    char *token;
+    /* get the first token */
+    token = strtok(url, "/");
+    /* walk through other tokens */
+    while( token != NULL ) {
+        printf( "filename: %s\n", token );
+        token = strtok(NULL, "/");
+    }
+
+//    printf("%s\n", url);
+
     if (strcmp(method, "GET") != 0) {
         sprintf(response_header, "HTTP/1.1 400 Bad Request\\r\\n\\r\\n");
     }
