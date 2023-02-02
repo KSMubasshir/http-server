@@ -10,24 +10,17 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <arpa/inet.h>
+
 
 void* client_handler(void* arg) {
     int new_socket = *((int*)arg);
     char sentence[1024] = { 0 };
     int valread = read(new_socket, sentence, 1024);
-    printf("Recevied sentence:\n");
-    printf("%s\n", sentence);
-    char modifiedSentence[1024] = { 0 };
     int j = 0;
     char ch;
-    while (sentence[j]){
-        ch = sentence[j];
-        modifiedSentence[j] = toupper(ch);
-        j++;
-    }
-    printf("Modified sentence:\n");
-    printf("%s\n", modifiedSentence);
-    send(new_socket, modifiedSentence, strlen(modifiedSentence), 0);
+
+    send(new_socket, sentence, strlen(sentence), 0);
 
     // closing the connected socket
     close(new_socket);
@@ -75,6 +68,7 @@ int main(int argc, char const* argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
+        printf("message-from-client: %s, %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
         // Create a new thread for each client
         pthread_t client_thread;
         int* new_sock = malloc(sizeof(int));
