@@ -42,6 +42,7 @@ int main(int argc, char const* argv[])
 	valread = read(sock, modifiedSentence, 1024);
 	printf("%s\n", modifiedSentence);
 
+    sleep(15);
 	// closing the connected socket
 	close(client_fd);
 	return 0;
