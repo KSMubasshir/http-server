@@ -22,33 +22,6 @@ struct sockaddr_in address;
 pthread_t thread_pool[MAX_THREADS];
 int thread_count = 0;
 
-void printdir(char *dir, int depth)
-{
-    DIR *dp;
-    struct dirent *entry;
-    struct stat statbuf;
-    if((dp = opendir(dir)) == NULL) {
-        fprintf(stderr,"cannot open directory: %s\n", dir);
-        return;
-    }
-    chdir(dir);
-    while((entry = readdir(dp)) != NULL) {
-        lstat(entry->d_name,&statbuf);
-        if(S_ISDIR(statbuf.st_mode)) {
-            /* Found a directory, but ignore . and .. */
-            if(strcmp(".",entry->d_name) == 0 ||
-               strcmp("..",entry->d_name) == 0)
-                continue;
-            printf("%*s%s/\n",depth,"",entry->d_name);
-            /* Recurse at a new indent level */
-            printdir(entry->d_name,depth+4);
-        }
-        else printf("%*s%s\n",depth,"",entry->d_name);
-    }
-    chdir("..");
-    closedir(dp);
-}
-
 void *client_handler(void *socket_desc) {
     int hasFile = 0;
     char response_header[1024];
@@ -64,14 +37,10 @@ void *client_handler(void *socket_desc) {
     char method[8], url[BUFFER_SIZE], http_version[16];
     sscanf(buffer, "%s %s %s", method, url, http_version);
 
-
     char *requested_file_name = strtok(url, "/");
-//    printdir("www", 0);
     char path[50];
     strcpy(path, "www");
     strcat(path, url);
-    printf("%s\n", path);
-
 
     if (strcmp(method, "GET") != 0) {
         sprintf(response_header, "HTTP/1.1 400 Bad Request\r\n\r\n");
