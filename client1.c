@@ -104,26 +104,54 @@ int main(int argc, char const *argv[]) {
     }
 
     // Search for the URLs of the web objects by searching for <img> and <iframe> tags in the HTML file
+    char objects[MAX_OBJECTS][100];
     char *pattern = "src=\\\"([^\\\"]+)\\\"";
     regex_t regex;
     regcomp(&regex, pattern, REG_EXTENDED);
     regmatch_t match_files[2];
-    int match_count = 0;
+    int num_of_objects = 0;
     char *start = html;
     while (regexec(&regex, start, 2, match_files, 0) == 0) {
         int length = match_files[1].rm_eo - match_files[1].rm_so;
         char file_name[length + 1];
         strncpy(file_name, start + match_files[1].rm_so, length);
         file_name[length] = '\0';
-
-        printf("%s\n", file_name);
-        match_count++;
-
         start += match_files[0].rm_eo;
+        char *extension = strrchr(file_name, '.');
+        if (strcmp(extension, ".jpeg") == 0 || strcmp(extension, ".mp4") == 0) {
+            strncpy(objects[num_of_objects++], file_name, length + 1);
+        }
     }
     regfree(&regex);
 
+    for (int i = 0; i < num_of_objects; ++i) {
+        sprintf(request, "GET /%s HTTP/1.1\r\nHost: %s\r\nConnection: keep-alive\r\n\r\n", objects[i], host);
+        send(sock, request, strlen(request), 0);
+        valread = 0;
+        char buffer2[MAX_BUF_SIZE] = {0};
+        valread = read(sock, buffer2, 1024);
+        buffer2[valread] = '\0';
 
+        //
+        char *header_end = strstr(buffer2, "\r\n\r\n");
+        if (header_end == NULL) {
+            header_end = strstr(buffer2, "\n\n");
+        }
+        int header_len = header_end - buffer2 + 2;
+        char header[header_len + 1];
+        int html_len = valread - header_len;
+        char html[html_len + 1];
+        if (header_end != NULL) {
+            memcpy(header, buffer2, header_len);
+            header[header_len] = '\0';
+            memcpy(html, header_end + 4, html_len);
+            html[html_len] = '\0';
+
+            printf("%s\n", header);
+        } else {
+            printf("Failed to extract header and HTML.\n");
+        }
+    }
 
     sleep(60);
     // closing the connected socket
