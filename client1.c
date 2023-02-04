@@ -77,52 +77,30 @@ int main(int argc, char const *argv[]) {
     // Read the response and check if there are more web objects to
     valread = 0;
     char buffer1[MAX_BUF_SIZE] = {0};
-    int endOfResponse = 0;
-    while (!endOfResponse) {
-        valread = read(sock, buffer1, 1024);
-        buffer1[valread] = '\0';
-        printf("%s\n", buffer1);
+    valread = read(sock, buffer1, 1024);
+    buffer1[valread] = '\0';
 
-        // Check if there are more web objects to retrieve
-        if (strstr(buffer1, "Content-Length") != NULL) {
-            // Extract the Content-Length value from the response header
-            char *contentLength = strstr(buffer1, "Content-Length");
-            int length = atoi(contentLength + strlen("Content-Length: "));
-
-            // Read the remaining content from the response body
-            char *content = (char *) malloc(length);
-            int bytesReceived = 0;
-            while (bytesReceived < length) {
-                int n = read(client_fd, content + bytesReceived, length - bytesReceived);
-                if (n < 0) {
-                    perror("Error reading content");
-                    return 1;
-                }
-                bytesReceived += n;
-            }
-        } else if (strstr(buffer1, "Content-Type") != NULL) {
-            // Extract the Content-Type value from the response header
-            char *contentType = strstr(buffer1, "Content-Type");
-            contentType += strlen("Content-Type: ");
-            int endIndex = strcspn(contentType, "\r\n");
-            contentType[endIndex] = '\0';
-
-            // Read the content from the response body
-            char *content = (char *) malloc(4096);
-            int bytesReceived = 0;
-            int n;
-            while ((n = read(client_fd, content + bytesReceived, 4096)) > 0) {
-                bytesReceived += n;
-                content = (char *) realloc(content, bytesReceived + 4096);
-            }
-        }
-
-
-        // Check if this is the end of the response
-        if (strstr(buffer1, "0\r\n\r\n") != NULL) {
-            endOfResponse = 1;
-        }
+    char *header_end = strstr(buffer1, "\r\n\r\n");
+    if (header_end == NULL) {
+        header_end = strstr(buffer1, "\n\n");
     }
+    if (header_end != NULL) {
+        int header_len = header_end - buffer1 + 2;
+        char header[header_len + 1];
+        memcpy(header, buffer1, header_len);
+        header[header_len] = '\0';
+
+        int html_len = valread - header_len;
+        char html[html_len + 1];
+        memcpy(html, header_end + 4, html_len);
+        html[html_len] = '\0';
+
+        printf("%s\n", header);
+    } else {
+        printf("Failed to extract header and HTML.\n");
+    }
+
+
     sleep(60);
     // closing the connected socket
     close(client_fd);
