@@ -29,7 +29,7 @@ int main(int argc, char const *argv[]) {
     int port = 80;
 
     regex_t re;
-    regcomp(&re, "http://([a-zA-Z0-9\\.]+):([0-9]+)(/[a-zA-Z0-9/]+)", REG_EXTENDED);
+    regcomp(&re, "http://([a-zA-Z0-9\\.]+):([0-9]+)(/[a-zA-Z0-9\\./]+)", REG_EXTENDED);
     regmatch_t match[4];
     if (regexec(&re, url, 4, match, 0) == 0) {
         int start = match[1].rm_so;
