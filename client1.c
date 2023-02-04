@@ -8,8 +8,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <regex.h>
+#include <netdb.h>
 
+#define SRC_REGEX_PATTERN "src=\".*?\""
 #define MAX_BUF_SIZE 1024
+#define MAX_OBJECTS 50
 
 int main(int argc, char const *argv[]) {
     int sock = 0, valread, client_fd;
@@ -80,18 +83,18 @@ int main(int argc, char const *argv[]) {
     valread = read(sock, buffer1, 1024);
     buffer1[valread] = '\0';
 
+    //
     char *header_end = strstr(buffer1, "\r\n\r\n");
     if (header_end == NULL) {
         header_end = strstr(buffer1, "\n\n");
     }
+    int header_len = header_end - buffer1 + 2;
+    char header[header_len + 1];
+    int html_len = valread - header_len;
+    char html[html_len + 1];
     if (header_end != NULL) {
-        int header_len = header_end - buffer1 + 2;
-        char header[header_len + 1];
         memcpy(header, buffer1, header_len);
         header[header_len] = '\0';
-
-        int html_len = valread - header_len;
-        char html[html_len + 1];
         memcpy(html, header_end + 4, html_len);
         html[html_len] = '\0';
 
@@ -99,6 +102,27 @@ int main(int argc, char const *argv[]) {
     } else {
         printf("Failed to extract header and HTML.\n");
     }
+
+    // Search for the URLs of the web objects by searching for <img> and <iframe> tags in the HTML file
+    char *pattern = "src=\\\"([^\\\"]+)\\\"";
+    regex_t regex;
+    regcomp(&regex, pattern, REG_EXTENDED);
+    regmatch_t match_files[2];
+    int match_count = 0;
+    char *start = html;
+    while (regexec(&regex, start, 2, match_files, 0) == 0) {
+        int length = match_files[1].rm_eo - match_files[1].rm_so;
+        char file_name[length + 1];
+        strncpy(file_name, start + match_files[1].rm_so, length);
+        file_name[length] = '\0';
+
+        printf("%s\n", file_name);
+        match_count++;
+
+        start += match_files[0].rm_eo;
+    }
+    regfree(&regex);
+
 
 
     sleep(60);
