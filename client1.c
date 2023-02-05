@@ -132,7 +132,6 @@ int main(int argc, char const *argv[]) {
         valread = read(sock, buffer2, 1024);
         buffer2[valread] = '\0';
 
-        //
         char *header_end = strstr(buffer2, "\r\n\r\n");
         if (header_end == NULL) {
             header_end = strstr(buffer2, "\n\n");

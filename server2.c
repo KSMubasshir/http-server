@@ -28,62 +28,76 @@ void *client_handler(void *socket_desc) {
     char buffer[BUFFER_SIZE] = {0};
     struct stat file_stat;
     char *html_file;
+    int valread = read(*(int *)socket_desc, buffer, BUFFER_SIZE);
+    if (valread < 0) {
+        perror("read failed");
+        return NULL;
+    }
+    printf("%s\n", buffer);
+    char method[8], url[BUFFER_SIZE], http_version[16];
+    sscanf(buffer, "%s %s %s", method, url, http_version);
 
-    while (1) {
-        memset(buffer, 0, BUFFER_SIZE);
-        int valread = read(*(int *)socket_desc, buffer, BUFFER_SIZE);
-        if (valread <= 0) {
-            break;
-        }
-        printf("%s\n", buffer);
-        char method[8], url[BUFFER_SIZE], http_version[16];
-        sscanf(buffer, "%s %s %s", method, url, http_version);
+    char *requested_file_name = strtok(url, "/");
+    char path[50];
+    strcpy(path, "www");
+    strcat(path, url);
 
-        char *requested_file_name = strtok(url, "/");
-        char path[50];
-        strcpy(path, "www");
-        strcat(path, url);
+    if (strcmp(method, "GET") != 0) {
+        sprintf(response_header, "HTTP/1.1 400 Bad Request\r\n\r\n");
+    }
+    else if (strcmp(http_version, "HTTP/1.1") != 0) {
+        sprintf(response_header, "HTTP/1.1 505 HTTP Version Not Supported\r\n\r\n");
+    }
+    else if (stat(path, &file_stat) < 0) {
+        sprintf(response_header, "HTTP/1.1 404 Not Found\r\n\r\n");
+    }
+    else if (!S_ISREG(file_stat.st_mode)) {
+        sprintf(response_header, "HTTP/1.1 404 Not Found\r\n\r\n");
+    }
+    else{
+        hasFile = 1;
+        html_file = malloc(file_stat.st_size + 1);
+        FILE *file = fopen(path, "r");
+        fread(html_file, file_stat.st_size, 1, file);
+        fclose(file);
 
-        if (strcmp(method, "GET") != 0) {
-            sprintf(response_header, "HTTP/1.1 400 Bad Request\r\n\r\n");
+        char *extension = strrchr(requested_file_name, '.');
+        if (extension == NULL) {
+            printf("Invalid file type\n");
         }
-        else if (strcmp(http_version, "HTTP/1.1") != 0) {
-            sprintf(response_header, "HTTP/1.1 505 HTTP Version Not Supported\r\n\r\n");
-        }
-        else if (stat(path, &file_stat) < 0) {
-            sprintf(response_header, "HTTP/1.1 404 Not Found\r\n\r\n");
-        }
-        else if (!S_ISREG(file_stat.st_mode)) {
-            sprintf(response_header, "HTTP/1.1 404 Not Found\r\n\r\n");
-        }
-        else{
-            hasFile = 1;
-            html_file = malloc(file_stat.st_size + 1);
-            FILE *file = fopen(path, "r");
-            fread(html_file, file_stat.st_size, 1, file);
-            fclose(file);
-
-            char *extension = strrchr(requested_file_name, '.');
-            if (extension == NULL) {
-                printf("Invalid file type\n");
-            }
-            if (strcmp(extension, ".html") == 0) {
-                sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
-            } else if (strcmp(extension, ".jpeg") == 0) {
-                sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: image/jpeg\r\n\r\n");
-            } else if (strcmp(extension, ".mp4") == 0) {
-                sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\n\r\n");
-            } else {
-                printf("Invalid file type\n");
-            }
-        }
-
-        send(*(int *)socket_desc, response_header, strlen(response_header), 0);
-        if(hasFile==1) {
-            send(*(int *) socket_desc, html_file, file_stat.st_size, 0);
+        if (strcmp(extension, ".html") == 0) {
+            sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
+        } else if (strcmp(extension, ".jpeg") == 0) {
+            sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: image/jpeg\r\n\r\n");
+        } else if (strcmp(extension, ".mp4") == 0) {
+            sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\n\r\n");
+        } else {
+            printf("Invalid file type\n");
         }
     }
-    close(*(int *)socket_desc);
+
+    send(*(int *)socket_desc, response_header, strlen(response_header), 0);
+    if(hasFile==1) {
+        // send(*(int *) socket_desc, html_file, file_stat.st_size, 0);
+        if (file_stat.st_size > 40 * 1024) {
+            int bytes_left = file_stat.st_size;
+            int offset = 0;
+            while (bytes_left > 0) {
+                int bytes_to_send = (bytes_left > 40 * 1024) ? 40 * 1024 : bytes_left;
+                int bytes_sent = send(*(int *) socket_desc, html_file + offset, bytes_to_send, 0);
+                if (bytes_sent == -1) {
+                    // error handling
+                }
+                bytes_left -= bytes_sent;
+                offset += bytes_sent;
+            }
+        } else {
+            send(*(int *) socket_desc, html_file, file_stat.st_size, 0);
+        }
+
+        free(html_file);
+    }
+
     return NULL;
 }
 
