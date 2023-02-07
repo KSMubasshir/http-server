@@ -24,10 +24,10 @@ int thread_count = 0;
 
 void *client_handler(void *socket_desc) {
     int hasFile = 0;
+    char *html_file;
     char response_header[1024];
     char buffer[BUFFER_SIZE] = {0};
     struct stat file_stat;
-    char *html_file;
     char method[8], url[BUFFER_SIZE], http_version[16];
     int valread = 0;
     char path[50];
@@ -69,19 +69,26 @@ void *client_handler(void *socket_desc) {
                 printf("Invalid file type\n");
             }
             if (strcmp(extension, ".html") == 0) {
-                sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
+                sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: %ld\r\n\r\n", file_stat.st_size);
             } else if (strcmp(extension, ".jpeg") == 0) {
-                sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: image/jpeg\r\n\r\n");
+                sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: image/jpeg\r\nContent-Length: %ld\r\n\r\n", file_stat.st_size);
             } else if (strcmp(extension, ".mp4") == 0) {
-                sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\n\r\n");
+                sprintf(response_header, "HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nContent-Length: %ld\r\n\r\n", file_stat.st_size);
             } else {
                 printf("Invalid file type\n");
             }
+
         }
 
-        send(*(int *)socket_desc, response_header, strlen(response_header), 0);
-        if(hasFile==1) {
-            send(*(int *) socket_desc, html_file, file_stat.st_size, 0);
+        if(hasFile==1){
+            char response[1024 + file_stat.st_size];
+            strcpy(response, response_header);
+            memcpy(response + strlen(response_header), html_file, file_stat.st_size);
+            send(*(int *)socket_desc, response, strlen(response_header) + file_stat.st_size, 0);
+            free(html_file);
+        }
+        else{
+            send(*(int *)socket_desc, response_header, strlen(response_header) , 0);
         }
     }
     close(*(int *)socket_desc);
