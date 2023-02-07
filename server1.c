@@ -81,11 +81,13 @@ void *client_handler(void *socket_desc) {
         }
 
         if(hasFile==1){
-            char response[1024 + file_stat.st_size];
+            char *response = malloc(strlen(response_header) + file_stat.st_size);
             strcpy(response, response_header);
             memcpy(response + strlen(response_header), html_file, file_stat.st_size);
+            printf("%s\n", response);
             send(*(int *)socket_desc, response, strlen(response_header) + file_stat.st_size, 0);
             free(html_file);
+            free(response);
         }
         else{
             send(*(int *)socket_desc, response_header, strlen(response_header) , 0);
