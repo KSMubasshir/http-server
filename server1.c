@@ -28,19 +28,20 @@ void *client_handler(void *socket_desc) {
     char buffer[BUFFER_SIZE] = {0};
     struct stat file_stat;
     char *html_file;
+    char method[8], url[BUFFER_SIZE], http_version[16];
+    int valread = 0;
+    char path[50];
 
     while (1) {
         memset(buffer, 0, BUFFER_SIZE);
-        int valread = read(*(int *)socket_desc, buffer, BUFFER_SIZE);
+        valread = read(*(int *)socket_desc, buffer, BUFFER_SIZE);
         if (valread <= 0) {
             break;
         }
         printf("%s\n", buffer);
-        char method[8], url[BUFFER_SIZE], http_version[16];
         sscanf(buffer, "%s %s %s", method, url, http_version);
 
         char *requested_file_name = strtok(url, "/");
-        char path[50];
         strcpy(path, "www");
         strcat(path, url);
 
