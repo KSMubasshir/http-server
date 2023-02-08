@@ -9,9 +9,11 @@
 #include <unistd.h>
 #include <regex.h>
 #include <netdb.h>
+#include <fcntl.h> /* Added for the nonblocking socket */
+
 
 #define SRC_REGEX_PATTERN "src=\".*?\""
-#define MAX_BUF_SIZE 1000 * 1024
+#define MAX_BUF_SIZE 40 * 1024
 #define MAX_OBJECTS 50
 
 int main(int argc, char const *argv[]) {
@@ -72,6 +74,9 @@ int main(int argc, char const *argv[]) {
         return -1;
     }
 
+    fcntl(client_fd, F_SETFL, O_NONBLOCK); /* Change the socket into non-blocking state	*/
+
+
     // Send GET request for base HTML file
     char request[1024];
     sprintf(request, "GET %s HTTP/2.0\r\nHost: %s\r\nConnection: keep-alive\r\n\r\n", path, host);
@@ -110,6 +115,7 @@ int main(int argc, char const *argv[]) {
     regcomp(&regex, pattern, REG_EXTENDED);
     regmatch_t match_files[2];
     int num_of_objects = 0;
+    int objects_requested = 0;
     char *start = html;
     while (regexec(&regex, start, 2, match_files, 0) == 0) {
         int length = match_files[1].rm_eo - match_files[1].rm_so;
@@ -123,23 +129,26 @@ int main(int argc, char const *argv[]) {
         }
     }
     regfree(&regex);
-
-    for (int i = 0; i < num_of_objects; ++i) {
-        sprintf(request, "GET /%s HTTP/2.0\r\nHost: %s\r\nConnection: keep-alive\r\n\r\n", objects[i], host);
-        send(sock, request, strlen(request), 0);
-        valread = 0;
-        char buffer2[MAX_BUF_SIZE] = {0};
-        valread = read(sock, buffer2, 1024);
-        buffer2[valread] = '\0';
+    char *buffer2;
+    while(1){
+        if (objects_requested < num_of_objects) {
+            sprintf(request, "GET /%s HTTP/2.0\r\nHost: %s\r\nConnection: keep-alive\r\n\r\n",
+                    objects[objects_requested], host);
+            send(sock, request, strlen(request), 0);
+        }
+        int max_buf_size = MAX_BUF_SIZE;
+        buffer2 = malloc(MAX_BUF_SIZE);
+        int valread = read(sock, buffer2, max_buf_size);
 
         char *header_end = strstr(buffer2, "\r\n\r\n");
         if (header_end == NULL) {
             header_end = strstr(buffer2, "\n\n");
         }
         int header_len = header_end - buffer2 + 2;
-        char header[header_len + 1];
+        char *header = malloc(header_len + 1);
         int html_len = valread - header_len;
-        char html[html_len + 1];
+        char *html = malloc(html_len + 1);
+
         if (header_end != NULL) {
             memcpy(header, buffer2, header_len);
             header[header_len] = '\0';
@@ -148,8 +157,13 @@ int main(int argc, char const *argv[]) {
 
             printf("%s\n", header);
         } else {
-            printf("Failed to extract header and HTML.\n");
+//            printf("Failed to extract header and HTML.\n");
+            continue;
         }
+        free(buffer2);
+        free(header);
+        free(html);
+        objects_requested += 1;
     }
 
     sleep(60);

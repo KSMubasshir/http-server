@@ -116,12 +116,10 @@ int main(int argc, char const* argv[])
         exit(EXIT_FAILURE);
     }
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr("127.0.0.1"),
-            address.sin_port = htons(atoi(argv[1]));
+    address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    address.sin_port = htons(atoi(argv[1]));
 
-    if (bind(server_fd, (struct sockaddr*)&address,
-             sizeof(address))
-        < 0) {
+    if (bind(server_fd, (struct sockaddr*)&address,sizeof(address))< 0) {
         perror("bind failed");
         exit(EXIT_FAILURE);
     }

@@ -123,23 +123,47 @@ int main(int argc, char const *argv[]) {
         }
     }
     regfree(&regex);
+    char *buffer2;
 
     for (int i = 0; i < num_of_objects; ++i) {
         sprintf(request, "GET /%s HTTP/1.1\r\nHost: %s\r\nConnection: keep-alive\r\n\r\n", objects[i], host);
         send(sock, request, strlen(request), 0);
-        valread = 0;
-        char buffer2[MAX_BUF_SIZE] = {0};
-        valread = read(sock, buffer2, 1024);
-        buffer2[valread] = '\0';
+        int max_buf_size = MAX_BUF_SIZE;
+        buffer2 = malloc(MAX_BUF_SIZE);
+        int valread = read(sock, buffer2, max_buf_size);
+//        int bytes_read = 0;
+//        while (1) {
+////            bytes_read = read(sock, buffer2, max_buf_size);
+//            bytes_read = recv(sock, buffer2, max_buf_size, 0);
+//            if (bytes_read == -1) {
+//                perror("Error reading from socket");
+//                break;
+//            } else if (bytes_read == 0) {
+//                break;
+//            }
+//
+//            // Reallocate buffer if we have reached the end
+//            if (bytes_read == max_buf_size) {
+//                max_buf_size *= 2;
+//                buffer2 = realloc(buffer2, max_buf_size);
+//            }
+//            if (bytes_read < max_buf_size) {
+//                printf("Broke Here\nBytes Read: %d", bytes_read);
+//                break;
+//            }
+//        }
+
+//        printf("%s\n", buffer2);
 
         char *header_end = strstr(buffer2, "\r\n\r\n");
         if (header_end == NULL) {
             header_end = strstr(buffer2, "\n\n");
         }
         int header_len = header_end - buffer2 + 2;
-        char header[header_len + 1];
+        char *header = malloc(header_len + 1);
         int html_len = valread - header_len;
-        char html[html_len + 1];
+        char *html = malloc(html_len + 1);
+
         if (header_end != NULL) {
             memcpy(header, buffer2, header_len);
             header[header_len] = '\0';
@@ -150,6 +174,9 @@ int main(int argc, char const *argv[]) {
         } else {
             printf("Failed to extract header and HTML.\n");
         }
+        free(buffer2);
+        free(header);
+        free(html);
     }
 
     sleep(60);
