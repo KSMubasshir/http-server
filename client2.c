@@ -16,6 +16,7 @@
 #define MAX_BUF_SIZE 40 * 1024
 #define MAX_OBJECTS 50
 
+
 int main(int argc, char const *argv[]) {
     int sock = 0, valread, client_fd;
     struct sockaddr_in serv_addr;
@@ -135,10 +136,16 @@ int main(int argc, char const *argv[]) {
             sprintf(request, "GET /%s HTTP/2.0\r\nHost: %s\r\nConnection: keep-alive\r\n\r\n",
                     objects[objects_requested], host);
             send(sock, request, strlen(request), 0);
+            objects_requested += 1;
         }
         int max_buf_size = MAX_BUF_SIZE;
         buffer2 = malloc(MAX_BUF_SIZE);
         int valread = read(sock, buffer2, max_buf_size);
+
+        if(valread==-1){
+            free(buffer2);
+            break;
+        }
 
         char *header_end = strstr(buffer2, "\r\n\r\n");
         if (header_end == NULL) {
@@ -155,7 +162,14 @@ int main(int argc, char const *argv[]) {
             memcpy(html, header_end + 4, html_len);
             html[html_len] = '\0';
 
-            printf("%s\n", header);
+            int frame_no = 0;
+            char *frame_string = strstr(header, "Frame-Number: ");
+            if (frame_string != NULL) {
+                sscanf(frame_string, "Frame-Number: %d", &frame_no);
+            }
+            if(frame_no % 100 == 1) {
+                printf("%s\n", header);
+            }
         } else {
 //            printf("Failed to extract header and HTML.\n");
             continue;
@@ -163,7 +177,6 @@ int main(int argc, char const *argv[]) {
         free(buffer2);
         free(header);
         free(html);
-        objects_requested += 1;
     }
 
     sleep(60);
