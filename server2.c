@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <fcntl.h> /* Added for the nonblocking socket */
+#include <time.h>
 
 
 
@@ -131,7 +132,7 @@ void *client_handler(void *socket_desc) {
             fread(frame + strlen(frame_header), 1, frame_size, file);
             send(*(int *)socket_desc, frame, frame_size + strlen(frame_header), 0);
             free(frame);
-            sleep(1);
+            usleep( 10 * 1000);
         }
         objects_sent = 0;
         for (int i = 0; i <= num_of_objects; ++i) {

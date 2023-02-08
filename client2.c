@@ -173,7 +173,7 @@ int main(int argc, char const *argv[]) {
             if (frame_string != NULL) {
                 sscanf(frame_string, "Frame-Number: %d", &frame_no);
             }
-            if(frame_no % 10 == 1) {
+            if(frame_no % 100 == 1) {
                 printf("Object-Frame: [Object%d] Frame_%d\n", object_no, frame_no);
             }
         } else {
