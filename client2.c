@@ -162,13 +162,19 @@ int main(int argc, char const *argv[]) {
             memcpy(html, header_end + 4, html_len);
             html[html_len] = '\0';
 
+            int object_no = 0;
+            char *object_string = strstr(header, "Object-Number: ");
+            if (object_string != NULL) {
+                sscanf(object_string, "Object-Number: %d", &object_no);
+            }
+
             int frame_no = 0;
             char *frame_string = strstr(header, "Frame-Number: ");
             if (frame_string != NULL) {
                 sscanf(frame_string, "Frame-Number: %d", &frame_no);
             }
-            if(frame_no % 100 == 1) {
-                printf("%s\n", header);
+            if(frame_no % 10 == 1) {
+                printf("Object-Frame: [Object%d] Frame_%d\n", object_no, frame_no);
             }
         } else {
 //            printf("Failed to extract header and HTML.\n");
