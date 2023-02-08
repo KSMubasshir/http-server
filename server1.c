@@ -23,6 +23,11 @@ pthread_t thread_pool[MAX_THREADS];
 int thread_count = 0;
 
 void *client_handler(void *socket_desc) {
+
+    struct sockaddr_in address;
+    socklen_t address_len = sizeof(address);
+    getpeername(new_socket, (struct sockaddr *)&address, &address_len);
+
     int hasFile = 0;
     char *html_file;
     char response_header[1024];
@@ -38,6 +43,7 @@ void *client_handler(void *socket_desc) {
         if (valread <= 0) {
             break;
         }
+        printf("message-from-client: %s, %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
         printf("%s\n", buffer);
         sscanf(buffer, "%s %s %s", method, url, http_version);
 
@@ -79,7 +85,8 @@ void *client_handler(void *socket_desc) {
             }
 
         }
-
+        printf("message-to-client: %s, %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+        printf("%s\n", response_header);
         if(hasFile==1){
             char *response = malloc(strlen(response_header) + file_stat.st_size);
             strcpy(response, response_header);
@@ -135,7 +142,6 @@ int main(int argc, char const* argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        printf("message-from-client: %s, %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
         // Create a new thread for each client
         pthread_t client_thread;
         int* new_sock = malloc(sizeof(int));
