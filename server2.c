@@ -26,6 +26,7 @@ struct Object {
     int object_size;
     int last_sent_frame;
     int total_frames;
+    int object_send_complete;
     char *content_type;
     FILE *file;
 };
@@ -48,6 +49,8 @@ void *client_handler(void *socket_desc) {
 //    char objects[MAX_OBJECTS][100];
     struct Object objects[MAX_OBJECTS];
     int num_of_objects = 0;
+    int objects_sent = 0;
+
 
     while (1) {
         memset(buffer, 0, BUFFER_SIZE);
@@ -97,16 +100,24 @@ void *client_handler(void *socket_desc) {
 
                 objects[num_of_objects].object_id = num_of_objects;
                 objects[num_of_objects].object_size = file_stat.st_size;
-                objects[num_of_objects].total_frames = (file_stat.st_size + FRAME_SIZE - 1) / FRAME_SIZE;;
+                objects[num_of_objects].total_frames = (file_stat.st_size + FRAME_SIZE - 1) / FRAME_SIZE;
                 objects[num_of_objects].content_type = content_type;
                 objects[num_of_objects].last_sent_frame = 0;
+                objects[num_of_objects].object_send_complete = 0;
                 objects[num_of_objects].file = fopen(path, "r");
 
                 num_of_objects += 1;
             }
         }
         for (int i = 0; i <= num_of_objects; ++i) {
+            if(objects[i].object_send_complete==1){
+                continue;
+            }
+            printf("last_sent_frame: %d total_frames: %d\n", objects[i].last_sent_frame, objects[i].total_frames);
+            printf("objects_sent: %d num_of_objects: %d\n", objects_sent, num_of_objects);
             if(objects[i].last_sent_frame==objects[i].total_frames){
+                objects[i].object_send_complete = 1;
+                objects_sent += 1;
                 continue;
             }
             int num_frames = objects[i].total_frames;
@@ -121,8 +132,11 @@ void *client_handler(void *socket_desc) {
             fread(frame + strlen(frame_header), 1, frame_size, file);
             send(*(int *)socket_desc, frame, frame_size + strlen(frame_header), 0);
             free(frame);
-            sleep(0.9);
+            sleep(1);
         }
+//        if(num_of_objects==objects_sent){
+//            break;
+//        }
     }
     close(*(int *)socket_desc);
     return NULL;
