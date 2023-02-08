@@ -59,6 +59,7 @@ int main(int argc, char const* argv[])
 		send(new_socket, sentence, strlen(sentence), 0);
 
 		// closing the connected socket
+        printf("close-client: %s, %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 		close(new_socket);
 	}
 	// closing the listening socket

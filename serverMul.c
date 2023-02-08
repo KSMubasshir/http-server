@@ -15,13 +15,21 @@
 
 void* client_handler(void* arg) {
     int new_socket = *((int*)arg);
+
+    struct sockaddr_in address;
+    socklen_t address_len = sizeof(address);
+    getpeername(new_socket, (struct sockaddr *)&address, &address_len);
+
     char sentence[1024] = { 0 };
     int valread = read(new_socket, sentence, 1024);
 
+
+    printf("message-from-client: %s, %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
     printf("%s\n", sentence);
     send(new_socket, sentence, strlen(sentence), 0);
 
     // closing the connected socket
+    printf("close-client: %s, %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
     close(new_socket);
     return NULL;
 }
@@ -67,7 +75,7 @@ int main(int argc, char const* argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        printf("message-from-client: %s, %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+        // printf("message-from-client: %s, %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
         // Create a new thread for each client
         pthread_t client_thread;
         int* new_sock = malloc(sizeof(int));
