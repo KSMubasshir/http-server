@@ -49,7 +49,8 @@ void *client_handler(void *socket_desc) {
 //    char objects[MAX_OBJECTS][100];
     struct Object objects[MAX_OBJECTS];
     int num_of_objects = 0;
-    int objects_sent = 0;
+    int objects_sent;
+    int all_objects_sent = 0;
 
 
     while (1) {
@@ -109,15 +110,13 @@ void *client_handler(void *socket_desc) {
                 num_of_objects += 1;
             }
         }
-        for (int i = 0; i <= num_of_objects; ++i) {
+
+        for (int i = 0; i < num_of_objects; ++i) {
             if(objects[i].object_send_complete==1){
                 continue;
             }
-            printf("last_sent_frame: %d total_frames: %d\n", objects[i].last_sent_frame, objects[i].total_frames);
-            printf("objects_sent: %d num_of_objects: %d\n", objects_sent, num_of_objects);
             if(objects[i].last_sent_frame==objects[i].total_frames){
                 objects[i].object_send_complete = 1;
-                objects_sent += 1;
                 continue;
             }
             int num_frames = objects[i].total_frames;
@@ -132,11 +131,17 @@ void *client_handler(void *socket_desc) {
             fread(frame + strlen(frame_header), 1, frame_size, file);
             send(*(int *)socket_desc, frame, frame_size + strlen(frame_header), 0);
             free(frame);
-            sleep(1);
+            sleep(0.1);
         }
-//        if(num_of_objects==objects_sent){
-//            break;
-//        }
+        objects_sent = 0;
+        for (int i = 0; i <= num_of_objects; ++i) {
+            if(objects[i].object_send_complete==1){
+                objects_sent +=1;
+            }
+        }
+        if(num_of_objects > 1 && objects_sent==num_of_objects){
+            break;
+        }
     }
     close(*(int *)socket_desc);
     return NULL;
