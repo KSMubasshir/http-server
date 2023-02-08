@@ -26,7 +26,7 @@ void *client_handler(void *socket_desc) {
 
     struct sockaddr_in address;
     socklen_t address_len = sizeof(address);
-    getpeername(new_socket, (struct sockaddr *)&address, &address_len);
+    getpeername(*(int*)socket_desc, (struct sockaddr *)&address, &address_len);
 
     int hasFile = 0;
     char *html_file;
@@ -52,16 +52,43 @@ void *client_handler(void *socket_desc) {
         strcat(path, url);
 
         if (strcmp(method, "GET") != 0) {
-            sprintf(response_header, "HTTP/1.1 400 Bad Request\r\n\r\n");
+            sprintf(response_header, "HTTP/1.1 400 Bad Request\r\n\r\n<!DOCTYPE html>\n"
+                                     "<html>\n"
+                                     "\t<body>\n"
+                                     "\t\t<h1>400 Bad Request</h1>\n"
+                                     "\t\t<p>400 Bad Request</p>\n"
+                                     "\t</body>\n"
+                                     "</html>\n"
+                                     "");
         }
         else if (strcmp(http_version, "HTTP/1.1") != 0) {
-            sprintf(response_header, "HTTP/1.1 505 HTTP Version Not Supported\r\n\r\n");
+            sprintf(response_header, "HTTP/1.1 505 HTTP Version Not Supported\r\n\r\n<!DOCTYPE html>\n"
+                                     "<html>\n"
+                                     "\t<body>\n"
+                                     "\t\t<h1>505 HTTP Version Not Supported</h1>\n"
+                                     "\t\t<p>505 HTTP Version Not Supported</p>\n"
+                                     "\t</body>\n"
+                                     "</html>\n"
+                                     "");
         }
         else if (stat(path, &file_stat) < 0) {
-            sprintf(response_header, "HTTP/1.1 404 Not Found\r\n\r\n");
+            sprintf(response_header, "HTTP/1.1 404 Not Found\r\n\r\n<!DOCTYPE html>\n"
+                                     "<html>\n"
+                                     "\t<body>\n"
+                                     "\t\t<h1>404 Not Found</h1>\n"
+                                     "\t\t<p>404 Not Found</p>\n"
+                                     "\t</body>\n"
+                                     "</html>\n"
+                                     "");
         }
         else if (!S_ISREG(file_stat.st_mode)) {
-            sprintf(response_header, "HTTP/1.1 404 Not Found\r\n\r\n");
+            sprintf(response_header, "HTTP/1.1 404 Not Found\r\n\r\n<!DOCTYPE html>\n"
+                                     "<html>\n"
+                                     "\t<body>\n"
+                                     "\t\t<h1>404 Not Found</h1>\n"
+                                     "\t\t<p>404 Not Found</p>\n"
+                                     "\t</body>\n"
+                                     "</html>");
         }
         else{
             hasFile = 1;
