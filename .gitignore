@@ -3,6 +3,7 @@
 
 # binary and executables
 *.o
+*.bin
 
 # video, image and html files
 *.html
