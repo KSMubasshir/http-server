@@ -54,8 +54,8 @@ int main(int argc, char const* argv[])
         exit(EXIT_FAILURE);
     }
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr("127.0.0.1"),
-            address.sin_port = htons(atoi(argv[1]));
+    address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    address.sin_port = htons(atoi(argv[1]));
 
     if (bind(server_fd, (struct sockaddr*)&address,
              sizeof(address))
@@ -75,7 +75,6 @@ int main(int argc, char const* argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        // printf("message-from-client: %s, %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
         // Create a new thread for each client
         pthread_t client_thread;
         int* new_sock = malloc(sizeof(int));
