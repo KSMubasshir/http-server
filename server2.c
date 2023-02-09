@@ -47,11 +47,13 @@ void *client_handler(void *socket_desc) {
     int valread = 0;
     char path[50];
 
-//    char objects[MAX_OBJECTS][100];
+    struct sockaddr_in address;
+    socklen_t address_len = sizeof(address);
+    getpeername(*(int*)socket_desc, (struct sockaddr *)&address, &address_len);
+
     struct Object objects[MAX_OBJECTS];
     int num_of_objects = 0;
     int objects_sent;
-    int all_objects_sent = 0;
 
 
     while (1) {
@@ -59,6 +61,7 @@ void *client_handler(void *socket_desc) {
         valread = read(*(int *)socket_desc, buffer, BUFFER_SIZE);
         if (valread > 0) {
             // has new GET request
+            printf("message-from-client: %s, %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
             printf("%s\n", buffer);
             sscanf(buffer, "%s %s %s", method, url, http_version);
 
@@ -97,8 +100,6 @@ void *client_handler(void *socket_desc) {
                 } else {
                     printf("Invalid file type\n");
                 }
-                html_file = malloc(file_stat.st_size + 1);
-//                FILE *file = fopen(path, "r");
 
                 objects[num_of_objects].object_id = num_of_objects;
                 objects[num_of_objects].object_size = file_stat.st_size;
@@ -132,7 +133,7 @@ void *client_handler(void *socket_desc) {
             fread(frame + strlen(frame_header), 1, frame_size, file);
             send(*(int *)socket_desc, frame, frame_size + strlen(frame_header), 0);
             free(frame);
-            usleep( 10 * 1000);
+            usleep( 30 * 1000);
         }
         objects_sent = 0;
         for (int i = 0; i <= num_of_objects; ++i) {
