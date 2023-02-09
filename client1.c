@@ -9,10 +9,13 @@
 #include <unistd.h>
 #include <regex.h>
 #include <netdb.h>
+#include <fcntl.h> /* Added for the nonblocking socket */
+
 
 #define SRC_REGEX_PATTERN "src=\".*?\""
 #define MAX_BUF_SIZE 1024
 #define MAX_OBJECTS 50
+
 
 int main(int argc, char const *argv[]) {
     int sock = 0, valread, client_fd;
@@ -72,6 +75,9 @@ int main(int argc, char const *argv[]) {
         return -1;
     }
 
+    fcntl(client_fd, F_SETFL, O_NONBLOCK); /* Change the socket into non-blocking state	*/
+
+
     // Send GET request for base HTML file
     char request[1024];
     sprintf(request, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: keep-alive\r\n\r\n", path, host);
@@ -110,6 +116,7 @@ int main(int argc, char const *argv[]) {
     regcomp(&regex, pattern, REG_EXTENDED);
     regmatch_t match_files[2];
     int num_of_objects = 0;
+    int objects_requested = 0;
     char *start = html;
     while (regexec(&regex, start, 2, match_files, 0) == 0) {
         int length = match_files[1].rm_eo - match_files[1].rm_so;
@@ -124,36 +131,29 @@ int main(int argc, char const *argv[]) {
     }
     regfree(&regex);
     char *buffer2;
+    int content_length = -1;
+    while(1){
+        if (objects_requested < num_of_objects) {
+            sprintf(request, "GET /%s HTTP/1.1\r\nHost: %s\r\nConnection: keep-alive\r\n\r\n",
+                    objects[objects_requested], host);
+            send(sock, request, strlen(request), 0);
+            objects_requested += 1;
+        }
+        int valread;
+        if(content_length > 0){
+            buffer2 = malloc(content_length);
+            valread = read(sock, buffer2, content_length);
+        }
+        else{
+            buffer2 = malloc(MAX_BUF_SIZE);
+            valread = read(sock, buffer2, MAX_BUF_SIZE);
+        }
 
-    for (int i = 0; i < num_of_objects; ++i) {
-        sprintf(request, "GET /%s HTTP/1.1\r\nHost: %s\r\nConnection: keep-alive\r\n\r\n", objects[i], host);
-        send(sock, request, strlen(request), 0);
-        int max_buf_size = MAX_BUF_SIZE;
-        buffer2 = malloc(MAX_BUF_SIZE);
-        int valread = read(sock, buffer2, max_buf_size);
-//        int bytes_read = 0;
-//        while (1) {
-////            bytes_read = read(sock, buffer2, max_buf_size);
-//            bytes_read = recv(sock, buffer2, max_buf_size, 0);
-//            if (bytes_read == -1) {
-//                perror("Error reading from socket");
-//                break;
-//            } else if (bytes_read == 0) {
-//                break;
-//            }
-//
-//            // Reallocate buffer if we have reached the end
-//            if (bytes_read == max_buf_size) {
-//                max_buf_size *= 2;
-//                buffer2 = realloc(buffer2, max_buf_size);
-//            }
-//            if (bytes_read < max_buf_size) {
-//                printf("Broke Here\nBytes Read: %d", bytes_read);
-//                break;
-//            }
-//        }
 
-//        printf("%s\n", buffer2);
+        if(valread==-1){
+            free(buffer2);
+            break;
+        }
 
         char *header_end = strstr(buffer2, "\r\n\r\n");
         if (header_end == NULL) {
@@ -171,12 +171,20 @@ int main(int argc, char const *argv[]) {
             html[html_len] = '\0';
 
             printf("%s\n", header);
+
+            char *content_length_string = strstr(header, "Content-Length: ");
+            if (content_length_string != NULL) {
+                sscanf(content_length_string, "Content-Length: %d", &content_length);
+//                printf("%d\n", content_length);
+            }
         } else {
-            printf("Failed to extract header and HTML.\n");
+//            printf("Failed to extract header and HTML.\n");
+            continue;
         }
         free(buffer2);
         free(header);
         free(html);
+        sleep(3);
     }
 
     sleep(60);
